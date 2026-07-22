@@ -1,6 +1,6 @@
 # Auto Knowledge
 
-这是一个基于 Open WebUI 改造的企业知识自动沉淀项目。它不是独立服务，也不是普通插件，而是直接接入 Open WebUI 的用户、聊天、知识库、RAG、后台管理和调度体系。
+这是一个企业知识自动沉淀项目。它不是独立服务，也不是普通插件，而是直接接入现有的用户、聊天、知识库、RAG、后台管理和调度体系。
 
 项目的核心目标是：从指定业务范围内的客服/运营聊天记录里，自动提炼可以复用的企业知识。系统会先采集聊天，再做清洗、脱敏、LLM 结构化提炼、去重、人工审核，最后把审核通过的内容发布到目标知识库，让后续 RAG 问答能够检索到这些新增知识。
 
@@ -31,7 +31,7 @@ Auto Knowledge 的主流程是：
 - Python：`3.11` 或 `3.12`
 - Git
 
-如果你只是想用 Docker 跑完整 Open WebUI，也可以直接看仓库里的 `Dockerfile` 和 `docker-compose.yaml`。如果你要开发 Auto Knowledge，建议按下面的源码方式启动。
+如果你只是想用 Docker 跑完整项目，也可以直接看仓库里的 `Dockerfile` 和 `docker-compose.yaml`。如果你要开发 Auto Knowledge，建议按下面的源码方式启动。
 
 ## 第一次启动
 
@@ -138,7 +138,7 @@ scripts\start-auto-knowledge-backend.ps1
 
 ## 后台怎么使用
 
-启动前后端后，登录 Open WebUI 管理后台，进入 Auto Knowledge 页面。管理员可以在这里做三件事：
+启动前后端后，登录管理后台，进入 Auto Knowledge 页面。管理员可以在这里做三件事：
 
 1. 创建自动沉淀任务，配置任务名称、目标知识库、执行周期、来源用户/用户组/模型和时间窗口。
 2. 手动运行任务，等待系统从符合条件的聊天中生成候选知识。
@@ -239,4 +239,4 @@ docs/superpowers/plans/2026-07-22-auto-knowledge-agent-workflow.md
 
 ## License
 
-本项目基于 Open WebUI 代码改造，许可证信息请查看 `LICENSE`、`LICENSE_HISTORY` 和 `LICENSE_NOTICE`。
+本项目基于现有代码改造，许可证信息请查看 `LICENSE`、`LICENSE_HISTORY` 和 `LICENSE_NOTICE`。
