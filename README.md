@@ -42,25 +42,24 @@ git clone https://github.com/FrozenfishKiel/auto-knowledge.git
 cd auto-knowledge
 ```
 
-安装前端依赖：
+Windows 用户可以直接双击根目录里的：
 
-```bash
-npm ci
+```text
+启动项目.bat
 ```
 
-安装后端依赖：
+这个脚本会帮你做几件事：检查 Node.js、npm 和 Python 是否存在；如果 `node_modules/` 不存在，会自动执行 `npm ci`；如果后端依赖缺失，会自动安装 `backend/requirements.txt`；然后启动后端和前端，等服务可用后自动打开浏览器。
 
-```bash
-python -m pip install -r backend/requirements.txt
+双击启动后，窗口不要关。这个窗口负责维持本次启动的服务，按 Enter 会停止脚本启动的前后端进程。
+
+如果你的 Python 不在系统 PATH 里，先在 PowerShell 里指定路径，再运行脚本：
+
+```powershell
+$env:PYTHON_EXE='C:\Path\To\python.exe'
+.\启动项目.bat
 ```
 
-复制环境变量文件：
-
-```bash
-cp .env.example .env.local
-```
-
-Windows PowerShell 可以用：
+第一次运行前建议复制环境变量文件：
 
 ```powershell
 Copy-Item .env.example .env.local
@@ -81,7 +80,31 @@ OPENAI_API_KEY=你的模型服务密钥
 OPENAI_API_BASE_URL=你的 OpenAI-compatible API 地址
 ```
 
-## 启动后端和前端
+## 手动启动方式
+
+如果你不想用双击脚本，也可以手动启动。先安装前端依赖：
+
+```bash
+npm ci
+```
+
+再安装后端依赖：
+
+```bash
+python -m pip install -r backend/requirements.txt
+```
+
+复制环境变量文件：
+
+```bash
+cp .env.example .env.local
+```
+
+Windows PowerShell 可以用：
+
+```powershell
+Copy-Item .env.example .env.local
+```
 
 后端默认跑在 `http://localhost:8080`。
 
