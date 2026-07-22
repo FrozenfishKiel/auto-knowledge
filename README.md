@@ -1,339 +1,242 @@
-# Open WebUI 👋
+# Auto Knowledge
 
-![GitHub stars](https://img.shields.io/github/stars/open-webui/open-webui?style=social)
-![GitHub forks](https://img.shields.io/github/forks/open-webui/open-webui?style=social)
-![GitHub watchers](https://img.shields.io/github/watchers/open-webui/open-webui?style=social)
-![GitHub repo size](https://img.shields.io/github/repo-size/open-webui/open-webui)
-![GitHub language count](https://img.shields.io/github/languages/count/open-webui/open-webui)
-![GitHub top language](https://img.shields.io/github/languages/top/open-webui/open-webui)
-![GitHub last commit](https://img.shields.io/github/last-commit/open-webui/open-webui?color=red)
-[![Discord](https://img.shields.io/badge/Discord-Open_WebUI-blue?logo=discord&logoColor=white)](https://discord.gg/5rJgQTnV4s)
-[![](https://img.shields.io/static/v1?label=Sponsor&message=%E2%9D%A4&logo=GitHub&color=%23fe8e86)](https://github.com/sponsors/open-webui)
+这是一个基于 Open WebUI 改造的企业知识自动沉淀项目。它不是独立服务，也不是普通插件，而是直接接入 Open WebUI 的用户、聊天、知识库、RAG、后台管理和调度体系。
 
-![Open WebUI Banner](./banner.png)
+项目的核心目标是：从指定业务范围内的客服/运营聊天记录里，自动提炼可以复用的企业知识。系统会先采集聊天，再做清洗、脱敏、LLM 结构化提炼、去重、人工审核，最后把审核通过的内容发布到目标知识库，让后续 RAG 问答能够检索到这些新增知识。
 
-**Open WebUI is an [extensible](https://docs.openwebui.com/features/extensibility/plugin), feature-rich, and user-friendly self-hosted AI platform designed to operate entirely offline.** It supports various LLM runners like **Ollama** and **OpenAI-compatible APIs**, with **built-in inference engine** for RAG, making it a **powerful AI deployment solution**.
+## 这个项目能做什么
 
-Passionate about open-source AI? [Join our team →](https://careers.openwebui.com/)
+Auto Knowledge 的主流程是：
 
-![Open WebUI Demo](./demo.png)
+```text
+管理员创建知识沉淀任务
+-> 选择目标知识库和聊天来源范围
+-> 手动或定时运行任务
+-> 系统采集聊天并清洗脱敏
+-> LLM 提炼候选知识
+-> 系统去重并生成候选项
+-> 管理员审核、编辑、通过或拒绝
+-> 通过的知识发布到目标知识库
+-> 后续 RAG 问答可以检索命中
+```
 
-> [!TIP]  
-> **Looking for an [Enterprise Plan](https://docs.openwebui.com/enterprise)?** – **[Speak with Our Sales Team Today!](https://docs.openwebui.com/enterprise)**
->
-> Get **enhanced capabilities**, including **custom theming and branding**, **Service Level Agreement (SLA) support**, **Long-Term Support (LTS) versions**, and **more!**
+这里最重要的边界是：原始聊天不能直接入库。所有内容都必须经过清洗、脱敏、结构化校验、去重和审核，才允许进入知识库。
 
-For more information, be sure to check out our [Open WebUI Documentation](https://docs.openwebui.com/).
+## 环境要求
 
-## Local Development
+本地开发建议使用下面的版本：
 
-This repository can be run straight from source. The frontend and backend are separate dev processes, and the browser talks to the backend over HTTP.
+- Node.js：`18.13` 到 `22.x`
+- npm：`6.0` 或更高
+- Python：`3.11` 或 `3.12`
+- Git
 
-### Prerequisites
+如果你只是想用 Docker 跑完整 Open WebUI，也可以直接看仓库里的 `Dockerfile` 和 `docker-compose.yaml`。如果你要开发 Auto Knowledge，建议按下面的源码方式启动。
 
-- Node.js `18.13` through `22.x`
-- npm
-- Python `3.11` or `3.12`
-- A `WEBUI_SECRET_KEY` value in your shell or `.env.local`
+## 第一次启动
 
-### Start From Source
+先克隆仓库：
 
-1. Install frontend dependencies:
+```bash
+git clone https://github.com/FrozenfishKiel/auto-knowledge.git
+cd auto-knowledge
+```
 
-   ```bash
-   npm ci
-   ```
+安装前端依赖：
 
-2. Install backend dependencies:
+```bash
+npm ci
+```
 
-   ```bash
-   python -m pip install -r backend/requirements.txt
-   ```
+安装后端依赖：
 
-3. Copy `.env.example` to `.env.local` and set your backend credentials and model/API settings.
+```bash
+python -m pip install -r backend/requirements.txt
+```
 
-4. Start the backend:
+复制环境变量文件：
 
-   ```bash
-   # macOS/Linux
-   bash backend/dev.sh
-   ```
+```bash
+cp .env.example .env.local
+```
 
-   ```powershell
-   # Windows
-   backend\start_windows.bat
-   ```
+Windows PowerShell 可以用：
 
-5. Start the frontend:
+```powershell
+Copy-Item .env.example .env.local
+```
 
-   ```bash
-   npm run dev
-   ```
+然后打开 `.env.local`，按你的模型服务配置 API 地址和 key。不要把真实 key 提交到仓库里。
 
-6. Open `http://localhost:5173`. The backend listens on `http://localhost:8080` in the default dev setup.
+至少建议配置一个本地开发用密钥：
 
-### Auto Knowledge
+```env
+WEBUI_SECRET_KEY=dev-local-secret
+```
 
-Auto Knowledge is built into this repository as an admin feature for mining approved chats into reusable knowledge.
+如果要跑真实 LLM 提炼，还需要配置类似下面的变量：
 
-Useful local scripts:
+```env
+OPENAI_API_KEY=你的模型服务密钥
+OPENAI_API_BASE_URL=你的 OpenAI-compatible API 地址
+```
+
+## 启动后端和前端
+
+后端默认跑在 `http://localhost:8080`。
+
+macOS / Linux：
+
+```bash
+bash backend/dev.sh
+```
+
+Windows：
+
+```powershell
+backend\start_windows.bat
+```
+
+然后另开一个终端启动前端：
+
+```bash
+npm run dev
+```
+
+前端默认地址是 `http://localhost:5173`。浏览器打开这个地址后，前端会请求本地 `8080` 端口的后端。
+
+## Auto Knowledge 本地调试
+
+仓库里额外放了两个 Auto Knowledge 辅助脚本，主要用于单独调试这个模块。
+
+启动 Auto Knowledge 调试后端：
 
 ```powershell
 scripts\start-auto-knowledge-backend.ps1
+```
+
+这个脚本会把后端启动在：
+
+```text
+http://127.0.0.1:8081
+```
+
+检查后端是否还活着：
+
+```powershell
 scripts\check-auto-knowledge-backend.ps1
 ```
 
-The Auto Knowledge backend helper uses a local cache under `.agents/cache/` and reads `.env.local` when present. Use it when you want to work on the Auto Knowledge flow without disturbing your main backend process.
+脚本会读取 `.env.local`，并把运行日志写到 `.agents/logs/`。这个目录是本地运行产物，不会提交到仓库。
 
-Common verification commands:
+如果你的 Python 不在系统 PATH 里，可以在运行脚本前指定：
+
+```powershell
+$env:PYTHON_EXE='C:\Path\To\python.exe'
+scripts\start-auto-knowledge-backend.ps1
+```
+
+## 后台怎么使用
+
+启动前后端后，登录 Open WebUI 管理后台，进入 Auto Knowledge 页面。管理员可以在这里做三件事：
+
+1. 创建自动沉淀任务，配置任务名称、目标知识库、执行周期、来源用户/用户组/模型和时间窗口。
+2. 手动运行任务，等待系统从符合条件的聊天中生成候选知识。
+3. 审核候选知识，查看脱敏后的来源，必要时编辑答案，然后通过、拒绝或重新发布。
+
+普通用户不应该看到 Auto Knowledge 管理入口，也不能调用任务创建、运行、审核、来源查看等管理 API。
+
+后端 API 挂载在：
+
+```text
+/api/v1/auto-knowledge
+```
+
+## 测试命令
+
+Auto Knowledge 的最小后端验证命令：
 
 ```powershell
 $env:WEBUI_SECRET_KEY='auto-knowledge-test-secret'
 python -m pytest backend\open_webui\utils\auto_knowledge\tests .agents\tests\test_auto_knowledge_benchmark_metrics.py -q
 ```
 
+API 测试：
+
 ```powershell
 $env:WEBUI_SECRET_KEY='auto-knowledge-test-secret'
 python -m pytest backend\open_webui\routers\tests\test_auto_knowledge_api.py -q
 ```
 
-## Key Features of Open WebUI ⭐
-
-- 🚀 **Effortless Setup**: Install seamlessly via pip, uv, Docker, or Kubernetes (kubectl, kustomize, or helm), with `:ollama` and `:cuda` tagged images available for container deployments.
-
-- 🤝 **Broad Model & API Integration**: Connect any OpenAI-compatible API alongside local Ollama models. Point the API URL at **LMStudio, GroqCloud, Mistral, OpenRouter, vLLM, and more** to mix and match providers freely.
-
-- 🔐 **Granular RBAC & User Groups**: Administrators define detailed roles, groups, and permissions, giving each user exactly the access they need. Secure by default, with tailored experiences per group.
-
-- 🧩 **Plugin Support**: Extend Open WebUI with **Filters**, **Actions**, **Pipes**, **Tools**, and **Skills**. Connect external services through **MCP**, **MCPO**, and **OpenAPI tool servers**. Build custom integrations, rate limits, approval flows, data connections, and more.
-
-- 🤖 **Models & Agents**: Wrap any base model with custom instructions, tools, and knowledge to build specialized agents. Supports dynamic variables, per-user/group access control, and community preset imports via [Open WebUI Community](https://openwebui.com/).
-
-- 📝 **Notes**: A dedicated workspace for content outside conversations. Draft with a rich editor, use AI to rewrite selected text, and attach notes to any chat for full-context injection.
-
-- 📢 **Channels**: Real-time shared spaces where your team and AI models collaborate in one timeline. Tag models to draft or critique, with threads, reactions, pins, and access control.
-
-- 🧠 **Persistent Memory**: The AI remembers facts about you across conversations, carrying context from one chat to the next.
-
-- ✅ **Live Workflow & Message Flow**: Watch the AI build and work through checklists in real time. Queue messages while the AI is still responding; they send automatically when it's ready.
-
-- 📅 **Calendar & AI Scheduling**: Built-in personal and shared calendars with month/week/day views, recurring events, color coding, attendees, and reminders. Models manage your schedule conversationally through native function calling.
-
-- ⏱️ **Automations**: Schedule prompts to run on recurring schedules, with runs surfaced on your calendar and each completed run linking back to the chat it produced.
-
-- 📱 **Responsive Design & PWA**: Seamless experience across desktop, laptop, and mobile, with a Progressive Web App for native app-like feel and offline access on localhost.
-
-- ✒️🔢 **Full Markdown and LaTeX Support**: Comprehensive Markdown and LaTeX capabilities for enriched interaction.
-
-- 🎤📹 **Hands-Free Voice/Video Call**: Integrated voice and video calls with multiple Speech-to-Text providers (Local Whisper, OpenAI, Deepgram, Azure) and Text-to-Speech engines (Azure, ElevenLabs, OpenAI, Transformers, WebAPI).
-
-- 💾 **Persistent Artifact Storage**: Built-in key-value storage API for artifacts, enabling journals, trackers, leaderboards, and collaborative tools with personal and shared data scopes.
-
-- 📚 **Local RAG Integration**: Retrieval Augmented Generation backed by 9 vector databases and multiple content-extraction engines (Tika, Docling, Document Intelligence, Mistral OCR, PaddleOCR-vl, external loaders). Supports hybrid search (BM25 + vector) with reranking and full-context mode. Load documents into chat or pull them from your library with the `#` command.
-
-- 🔍 **Web Search for RAG**: Search the web through dozens of providers including `SearXNG`, `Google PSE`, `Brave Search`, `Kagi`, `Mojeek`, `Tavily`, `Perplexity`, `Firecrawl`, `serpstack`, `serper`, `Serply`, `DuckDuckGo`, `SearchApi`, `SerpApi`, `Bing`, `Jina`, `Exa`, `Sougou`, `Azure AI Search`, and `Ollama Cloud`, injecting results directly into the conversation.
-
-- 🌐 **Web Browsing Capability**: Pull websites into chat with the `#` command followed by a URL, or let the model fetch them on its own when needed.
-
-- 🎨 **Image Generation & Editing**: Create and edit images with multiple engines including OpenAI DALL·E, Gemini, ComfyUI (local), and AUTOMATIC1111 (local), supporting both generation and prompt-based editing.
-
-- ⚙️ **Multi-Model Conversations**: Engage several models at once, harnessing their individual strengths in parallel for the best possible responses.
-
-- 📊 **Usage Analytics & Model Evaluation**: Admin dashboards track message volume, token consumption, and cost across users and models. Evaluate models with a built-in arena, A/B testing, and ELO-based leaderboards.
-
-- 🗄️ **Flexible Database & Storage**: Choose SQLite (with optional encryption) or PostgreSQL, and store files locally or on S3, Google Cloud Storage, or Azure Blob Storage.
-
-- 🧬 **Advanced Vector Database Support**: Pick from 9 vector databases: ChromaDB, PGVector, Qdrant, Milvus, Elasticsearch, OpenSearch, Pinecone, S3Vector, and Oracle 23ai.
-
-- 🪪 **Enterprise Authentication & Provisioning**: Full LDAP/Active Directory integration, SSO via trusted headers and OAuth providers, and SCIM 2.0 automated provisioning for identity providers like Okta, Azure AD, and Google Workspace.
-
-- ☁️ **Cloud-Native File Integration**: Native Google Drive and OneDrive/SharePoint file picking for seamless document import from enterprise cloud storage.
-
-- 🔭 **Production Observability**: Built-in OpenTelemetry support for traces, metrics, and logs, plugging into your existing monitoring stack.
-
-- ⚖️ **Horizontal Scalability**: Redis-backed session management and WebSocket support for multi-worker, multi-node deployments behind load balancers.
-
-- 🌐🌍 **Multilingual Support**: Use Open WebUI in your preferred language with i18n support. We're actively seeking contributors to expand language coverage!
-
-- 🌟 **Continuous Updates**: We're committed to improving Open WebUI with regular updates, fixes, and new features.
-
-- 🛡️ **Transparent Security Process**: Security reports are triaged, fixed, and published as open advisories through a documented responsible-disclosure process. See our [Security Policy](https://github.com/open-webui/open-webui/security).
-
-Want to learn more about Open WebUI's features? Check out our [Open WebUI documentation](https://docs.openwebui.com/features) for a comprehensive overview!
-
-## The Open WebUI Ecosystem 🌐
-
-Open WebUI is the core, surrounded by companion apps and infrastructure that extend what your AI can do, where it can reach, and how you run it:
-
-- ⚡ **Open Terminal** ([open-webui/open-terminal](https://github.com/open-webui/open-terminal)): A self-hosted computing environment that plugs into Open WebUI, giving the AI a place to write code, run it, read output, fix errors, and iterate inside the chat.
-
-- 🔒 **Terminals** · Enterprise ([open-webui/terminals](https://github.com/open-webui/terminals)): Per-user isolated containers with separate credentials, resource limits, and network rules. Automatic lifecycle management on Docker or Kubernetes.
-
-- 💻 **cptr** ([open-webui/computer](https://github.com/open-webui/computer)): A standalone, mobile-first computer and coding agent that runs on the machine you own. Files, terminal, and git in a browser tab, reachable from your phone. Connect it into Open WebUI as a model, or reach it from Telegram, WhatsApp, and more.
-
-- 🔄 **oikb** ([open-webui/oikb](https://github.com/open-webui/oikb)): Feed your Knowledge Bases from 45+ sources (GitHub, Confluence, ServiceNow, Salesforce, Jira, Slack, SharePoint, Notion, and more), keeping the tools your team already uses continuously in sync.
-
-- 🖥️ **Native Desktop App** ([open-webui/desktop](https://github.com/open-webui/desktop)): Run Open WebUI as a native app on macOS, Windows, and Linux. System-wide Spotlight chat bar with screenshot capture, push-to-talk voice, and optional fully-local inference via a built-in llama.cpp engine.
-
-Want to learn more? Check out our [Open WebUI documentation](https://docs.openwebui.com) for more details!
-
----
-
-We are incredibly grateful for the generous support of our sponsors. Their contributions help us to maintain and improve our project, ensuring we can continue to deliver quality work to our community. Thank you!
-
-## How to Install 🚀
-
-### Installation via Python pip 🐍
-
-Open WebUI can be installed using pip, the Python package installer. Before proceeding, ensure you're using **Python 3.11** to avoid compatibility issues.
-
-1. **Install Open WebUI**:
-   Open your terminal and run the following command to install Open WebUI:
-
-   ```bash
-   pip install open-webui
-   ```
-
-2. **Running Open WebUI**:
-   After installation, you can start Open WebUI by executing:
-
-   ```bash
-   open-webui serve
-   ```
-
-This will start the Open WebUI server, which you can access at [http://localhost:8080](http://localhost:8080)
-
-### Quick Start with Docker 🐳
-
-> [!NOTE]  
-> Please note that for certain Docker environments, additional configurations might be needed. If you encounter any connection issues, our detailed guide on [Open WebUI Documentation](https://docs.openwebui.com/) is ready to assist you.
-
-> [!WARNING]
-> When using Docker to install Open WebUI, make sure to include the `-v open-webui:/app/backend/data` in your Docker command. This step is crucial as it ensures your database is properly mounted and prevents any loss of data.
-
-> [!TIP]  
-> If you wish to utilize Open WebUI with Ollama included or CUDA acceleration, we recommend utilizing our official images tagged with either `:cuda` or `:ollama`. To enable CUDA, you must install the [Nvidia CUDA container toolkit](https://docs.nvidia.com/dgx/nvidia-container-runtime-upgrade/) on your Linux/WSL system.
-
-### Installation with Default Configuration
-
-- **If Ollama is on your computer**, use this command:
-
-  ```bash
-  docker run -d -p 3000:8080 --add-host=host.docker.internal:host-gateway -v open-webui:/app/backend/data --name open-webui --restart always ghcr.io/open-webui/open-webui:main
-  ```
-
-- **If Ollama is on a Different Server**, use this command:
-
-  To connect to Ollama on another server, change the `OLLAMA_BASE_URL` to the server's URL:
-
-  ```bash
-  docker run -d -p 3000:8080 -e OLLAMA_BASE_URL=https://example.com -v open-webui:/app/backend/data --name open-webui --restart always ghcr.io/open-webui/open-webui:main
-  ```
-
-- **To run Open WebUI with Nvidia GPU support**, use this command:
-
-  ```bash
-  docker run -d -p 3000:8080 --gpus all --add-host=host.docker.internal:host-gateway -v open-webui:/app/backend/data --name open-webui --restart always ghcr.io/open-webui/open-webui:cuda
-  ```
-
-### Installation for OpenAI API Usage Only
-
-- **If you're only using OpenAI API**, use this command:
-
-  ```bash
-  docker run -d -p 3000:8080 -e OPENAI_API_KEY=your_secret_key -v open-webui:/app/backend/data --name open-webui --restart always ghcr.io/open-webui/open-webui:main
-  ```
-
-### Installing Open WebUI with Bundled Ollama Support
-
-This installation method uses a single container image that bundles Open WebUI with Ollama, allowing for a streamlined setup via a single command. Choose the appropriate command based on your hardware setup:
-
-- **With GPU Support**:
-  Utilize GPU resources by running the following command:
-
-  ```bash
-  docker run -d -p 3000:8080 --gpus=all -v ollama:/root/.ollama -v open-webui:/app/backend/data --name open-webui --restart always ghcr.io/open-webui/open-webui:ollama
-  ```
-
-- **For CPU Only**:
-  If you're not using a GPU, use this command instead:
-
-  ```bash
-  docker run -d -p 3000:8080 -v ollama:/root/.ollama -v open-webui:/app/backend/data --name open-webui --restart always ghcr.io/open-webui/open-webui:ollama
-  ```
-
-Both commands facilitate a built-in, hassle-free installation of both Open WebUI and Ollama, ensuring that you can get everything up and running swiftly.
-
-After installation, you can access Open WebUI at [http://localhost:3000](http://localhost:3000). Enjoy! 😄
-
-### Other Installation Methods
-
-We offer various installation alternatives, including non-Docker native installation methods, Docker Compose, Kustomize, and Helm. Visit our [Open WebUI Documentation](https://docs.openwebui.com/getting-started/) or join our [Discord community](https://discord.gg/5rJgQTnV4s) for comprehensive guidance.
-
-### Troubleshooting
-
-Encountering connection issues? Our [Open WebUI Documentation](https://docs.openwebui.com/troubleshooting/) has got you covered. For further assistance and to join our vibrant community, visit the [Open WebUI Discord](https://discord.gg/5rJgQTnV4s).
-
-#### Open WebUI: Server Connection Error
-
-If you're experiencing connection issues, it’s often due to the WebUI docker container not being able to reach the Ollama server at 127.0.0.1:11434 (host.docker.internal:11434) inside the container . Use the `--network=host` flag in your docker command to resolve this. Note that the port changes from 3000 to 8080, resulting in the link: `http://localhost:8080`.
-
-**Example Docker Command**:
+前端类型和 Svelte 检查：
 
 ```bash
-docker run -d --network=host -v open-webui:/app/backend/data -e OLLAMA_BASE_URL=http://127.0.0.1:11434 --name open-webui --restart always ghcr.io/open-webui/open-webui:main
+npm run check
 ```
 
-### Keeping Your Docker Installation Up-to-Date
-
-Check our Updating Guide available in our [Open WebUI Documentation](https://docs.openwebui.com/getting-started/updating).
-
-### Using the Dev Branch 🌙
-
-> [!WARNING]
-> The `:dev` branch contains the latest unstable features and changes. Use it at your own risk as it may have bugs or incomplete features.
-
-If you want to try out the latest bleeding-edge features and are okay with occasional instability, you can use the `:dev` tag like this:
+前端测试：
 
 ```bash
-docker run -d -p 3000:8080 -v open-webui:/app/backend/data --name open-webui --add-host=host.docker.internal:host-gateway --restart always ghcr.io/open-webui/open-webui:dev
+npm run test:frontend
 ```
 
-### Offline Mode
+## Benchmark 和业务链路验证
 
-If you are running Open WebUI in an offline environment, you can set the `HF_HUB_OFFLINE` environment variable to `1` to prevent attempts to download models from the internet.
+项目里有一组 Auto Knowledge benchmark 和业务链路脚本，放在 `.agents/` 目录下。
 
-```bash
-export HF_HUB_OFFLINE=1
+跑 100 条样本 benchmark：
+
+```powershell
+$env:AUTO_KNOWLEDGE_EXTRACTION_CONCURRENCY='20'
+$env:AUTO_KNOWLEDGE_GLOBAL_EXTRACTION_CONCURRENCY='32'
+python .agents\benchmark_auto_knowledge_efficiency.py --limit 100 --projected-records 5000
 ```
 
-## What's Next? 🌟
+跑业务 harness 前，需要先启动后端，并且配置模型 API：
 
-Discover upcoming features on our roadmap in the [Open WebUI Documentation](https://docs.openwebui.com/roadmap/).
+```powershell
+$env:OPEN_WEBUI_BASE_URL='http://127.0.0.1:8081'
+$env:AUTO_KNOWLEDGE_MODEL_ID='gpt-4o-mini'
+python .agents\run_auto_knowledge_business_harness.py
+```
 
-## License 📜
+注意：`5000+` 规模数据是基于 100 条真实样本 benchmark 的折算结果，不是生产累计真实处理量。如果要对外引用指标，建议重新跑一次 benchmark 并保存原始报告。
 
-This project contains code under multiple licenses. The current codebase includes components licensed under the Open WebUI License with an additional requirement to preserve the "Open WebUI" branding, as well as prior contributions under their respective original licenses. For a detailed record of license changes and the applicable terms for each section of the code, please refer to [LICENSE_HISTORY](./LICENSE_HISTORY). For complete and updated licensing details, please see the [LICENSE](./LICENSE) and [LICENSE_HISTORY](./LICENSE_HISTORY) files.
+## 哪些文件不会提交
 
-## Support 💬
+仓库已经把本地运行和缓存文件加入 ignore。常见不会提交的内容包括：
 
-If you have any questions, suggestions, or need assistance, please open an issue or join our
-[Open WebUI Discord community](https://discord.gg/5rJgQTnV4s) to connect with us! 🤝
+- `.env.local`：本地密钥和模型配置
+- `node_modules/`：前端依赖
+- `.svelte-kit/`、`build/`：前端构建产物
+- `.agents/cache/`：模型和 HuggingFace 缓存
+- `.agents/logs/`：本地调试日志
+- `tmp/`：临时文件
+- Python `__pycache__/` 和 pytest 缓存
 
-## Security 🛡️
+这些文件不提交不会影响别人 clone 后启动项目。依赖可以通过 `npm ci` 和 `python -m pip install -r backend/requirements.txt` 重新安装；缓存和日志本来就应该在本地生成。
 
-If you believe you've found a security vulnerability, or something that shouldn't be disclosed publicly, please [reach out confidentially through our responsible disclosure program on GitHub](https://github.com/open-webui/open-webui/security). We accept reports only through GitHub, not through any other platform. Thank you for helping us keep Open WebUI secure!
+## 重要文档
 
-## Star History
+接手 Auto Knowledge 时，建议先看这几份文档：
 
-<a href="https://star-history.com/#open-webui/open-webui&Date">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=open-webui/open-webui&type=Date&theme=dark" />
-    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=open-webui/open-webui&type=Date" />
-    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=open-webui/open-webui&type=Date" />
-  </picture>
-</a>
+```text
+docs/auto-knowledge-handoff.md
+docs/prd/auto-knowledge-prd.md
+docs/superpowers/plans/2026-07-22-auto-knowledge-agent-workflow.md
+```
 
----
+其中 PRD 和交接文档在部分终端里可能出现中文编码显示问题。如果看到乱码，不要直接按乱码内容改产品范围，优先参考代码、测试和 implementation plan。
 
-Created by [Timothy Jaeryang Baek](https://github.com/tjbck) - Let's make Open WebUI even more amazing together! 💪
+## 当前已知风险
+
+这个项目已经有完整的 Auto Knowledge 主链路，但后续继续开发时要优先关注几个风险点：
+
+- 跨 run 的数据库级去重还需要继续加强，多个 job 并发时仍可能出现竞态重复。
+- scheduler claim 在非 Postgres 环境下还需要继续审查，尤其是 SQLite 本地测试场景。
+- `partial_success` 的语义要保持清楚：如果清洗后所有 segment 都提炼失败，而且没有插入候选，应该算 `failed`。
+- 候选发布后必须继续验证是否真的进入目标知识库，并能被后续 RAG 检索命中。
+
+## License
+
+本项目基于 Open WebUI 代码改造，许可证信息请查看 `LICENSE`、`LICENSE_HISTORY` 和 `LICENSE_NOTICE`。
