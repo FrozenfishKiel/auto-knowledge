@@ -10,6 +10,7 @@ $frontendLog = Join-Path $logDir "project-frontend.log"
 $frontendErrLog = Join-Path $logDir "project-frontend.err.log"
 $backendUrl = "http://127.0.0.1:8080"
 $frontendUrl = "http://localhost:5173"
+$preferredLocalPython = "D:\Anaconda3\envs\ai-content-ops\python.exe"
 
 function Write-Step {
     param([string]$Message)
@@ -42,27 +43,88 @@ function Read-LocalEnv {
     }
 }
 
+function Get-PythonVersion {
+    param(
+        [string]$File,
+        [string[]]$ArgsPrefix
+    )
+
+    $output = & $File @ArgsPrefix --version 2>$null
+    if ($LASTEXITCODE -ne 0 -or -not $output) {
+        return $null
+    }
+
+    try {
+        $text = ($output | Select-Object -Last 1).ToString().Trim()
+        if ($text.StartsWith("Python ")) {
+            $text = $text.Substring(7).Trim()
+        }
+        return [version]$text
+    } catch {
+        return $null
+    }
+}
+
 function Get-PythonCommand {
     $pythonExe = [Environment]::GetEnvironmentVariable("PYTHON_EXE", "Process")
     if ($pythonExe) {
-        return @{ File = $pythonExe; ArgsPrefix = @() }
+        $pythonVersion = Get-PythonVersion -File $pythonExe -ArgsPrefix @()
+        if ($pythonVersion -and $pythonVersion.Major -ge 3 -and $pythonVersion.Minor -ge 11) {
+            return @{ File = $pythonExe; ArgsPrefix = @() }
+        }
+    }
+
+    if (Test-Path $preferredLocalPython) {
+        $pythonVersion = Get-PythonVersion -File $preferredLocalPython -ArgsPrefix @()
+        if ($pythonVersion -and $pythonVersion.Major -ge 3 -and $pythonVersion.Minor -ge 11) {
+            return @{ File = $preferredLocalPython; ArgsPrefix = @() }
+        }
     }
 
     if (Test-Command "python") {
-        return @{ File = "python"; ArgsPrefix = @() }
+        $pythonVersion = Get-PythonVersion -File "python" -ArgsPrefix @()
+        if ($pythonVersion -and $pythonVersion.Major -ge 3 -and $pythonVersion.Minor -ge 11) {
+            return @{ File = "python"; ArgsPrefix = @() }
+        }
     }
 
     if (Test-Command "py") {
-        return @{ File = "py"; ArgsPrefix = @("-3") }
+        $pyList = & py -0p 2>$null
+        if ($LASTEXITCODE -eq 0 -and $pyList) {
+            foreach ($line in $pyList) {
+                if ($line -notmatch '^\s*-V:(?<tag>[^\s]+).*?(?<path>[A-Za-z]:\\.*python\.exe)\s*$') {
+                    continue
+                }
+
+                $path = $Matches['path']
+                if (-not (Test-Path $path)) {
+                    continue
+                }
+
+                $pythonVersion = Get-PythonVersion -File $path -ArgsPrefix @()
+                if ($pythonVersion -and $pythonVersion.Major -ge 3 -and $pythonVersion.Minor -ge 11) {
+                    return @{ File = $path; ArgsPrefix = @() }
+                }
+            }
+        }
     }
 
-    throw "Python was not found. Install Python 3.11/3.12 or set PYTHON_EXE first."
+    throw "Python 3.11/3.12 was not found. Install it, or set PYTHON_EXE to a compatible interpreter first."
 }
 
 function Get-NpmCommand {
     $npmCommand = Get-Command "npm" -ErrorAction SilentlyContinue
     if (-not $npmCommand) {
         throw "npm was not found. Install npm first."
+    }
+
+    if ($npmCommand.Source -and $npmCommand.Source.EndsWith(".cmd")) {
+        return $npmCommand.Source
+    }
+
+    $npmCmd = Join-Path (Split-Path -Parent $npmCommand.Source) "npm.cmd"
+    if (Test-Path $npmCmd) {
+        return $npmCmd
     }
 
     return $npmCommand.Source
@@ -76,8 +138,8 @@ function Invoke-Python {
     )
 
     $allArgs = @($Python.ArgsPrefix) + $Arguments
-    $process = Start-Process -FilePath $Python.File -ArgumentList $allArgs -WorkingDirectory $WorkingDirectory -NoNewWindow -Wait -PassThru
-    if ($process.ExitCode -ne 0) {
+    & $Python.File @allArgs
+    if ($LASTEXITCODE -ne 0) {
         throw "Python command failed: $($Arguments -join ' ')"
     }
 }
@@ -122,8 +184,8 @@ function Ensure-BackendDeps {
 
     $checkArgs = @("-c", "import fastapi, uvicorn, sqlalchemy")
     $allArgs = @($Python.ArgsPrefix) + $checkArgs
-    $check = Start-Process -FilePath $Python.File -ArgumentList $allArgs -WorkingDirectory $repoRoot -NoNewWindow -Wait -PassThru
-    if ($check.ExitCode -eq 0) {
+    & $Python.File @allArgs
+    if ($LASTEXITCODE -eq 0) {
         return
     }
 
